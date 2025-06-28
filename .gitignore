@@ -1,0 +1,22 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.resharper
+*.dotSettings
+*.ncb
+*.opendata
+*.log
+*.testsettings
+*.trx
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+obj/
+bin/
+node_modules/
+packages/
+publish/
+.DS_Store
+Thumbs.db

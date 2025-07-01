@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TiendaReparacion.Data;
 using TiendaReparacion.Repositories;
+using TiendaReparacion.Services;
 
 namespace TiendaReparacion
 {
@@ -73,6 +74,17 @@ namespace TiendaReparacion
                     // ¡NUEVO! Registra el repositorio de técnicos para la inyección de dependencias.
                     // Usamos AddTransient porque los repositorios a menudo tienen un ciclo de vida corto.
                     services.AddTransient<ITecnicoRepository, TecnicoRepository>();
+                    services.AddTransient<IDispositivoRepository, DispositivoRepository>();
+                    services.AddTransient<IUsuarioRepository, UsuarioRepository>();
+                    services.AddTransient<IOrdenServicioRepository, OrdenServicioRepository>();
+                    services.AddTransient<IDiagnosticoRepository, DiagnosticoRepository>();
+                    services.AddTransient<IClienteRepository, ClienteRepository>();
+
+                    services.AddScoped<IDispositivoServices, DispositivoServices>();
+                    services.AddScoped<IAuthServices, AuthServices>();
+                    services.AddScoped<IOrdenServicioServices, OrdenServicioServices>();
+                    services.AddScoped<IDiagnosticoServices, DiagnosticoServices>();
+                    services.AddScoped<IClienteServices, ClienteServices>();
                     // Registra tus formularios principales o servicios de UI que necesiten inyección.
                     services.AddTransient<Form1>(); // Asegúrate de que Form1 pueda recibir TiendaDbContext en su constructor
                 });

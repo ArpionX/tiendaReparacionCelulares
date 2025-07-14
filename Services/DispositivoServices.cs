@@ -16,6 +16,7 @@ namespace TiendaReparacion.Services
         Task<int> Insert(Dispositivo dispositivo);
         Task<int> Update(Dispositivo dispositivo);
         Task<int> Delete(int id);
+        Task<List<Dispositivo>> GetByClienteId(int idCliente);
     }
 
 
@@ -57,7 +58,19 @@ namespace TiendaReparacion.Services
             }
             return dispositivo;
         }
-
+        public async Task<List<Dispositivo>> GetByClienteId(int idCliente) // ¡NUEVO!
+        {
+            List<Dispositivo> dispositivos = new List<Dispositivo>();
+            try
+            {
+                dispositivos = await _dispositivoRepository.GetByClienteId(idCliente);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            return dispositivos;
+        }
         public async Task<Dispositivo?> GetByImei(string imei)
         {
             Dispositivo? dispositivo;
@@ -83,7 +96,7 @@ namespace TiendaReparacion.Services
                 if (dispositivoVerificate is not null) throw new Exception($"{dispositivo.Imei} ya registrada");
 
                 await _dispositivoRepository.Insert(dispositivo);
-                result = await _dispositivoRepository.SaveChangesAsync();
+                result = 1;
             }
             catch (Exception)
             {
@@ -98,12 +111,30 @@ namespace TiendaReparacion.Services
             int result = 0;
             try
             {
-                Dispositivo? dispositivoVerificate = await _dispositivoRepository.GetByImei(dispositivo.Imei);
+                // Validar que el IMEI no esté duplicado por otro dispositivo (si el IMEI se ha cambiado)
+                Dispositivo? dispositivoByImei = await _dispositivoRepository.GetByImei(dispositivo.Imei);
+                if (dispositivoByImei is not null && dispositivoByImei.IdDispositivo != dispositivo.IdDispositivo)
+                {
+                    throw new Exception("El IMEI ya está registrado para otro dispositivo.");
+                }
 
-                if (dispositivoVerificate is not null && dispositivo.IdDispositivo != dispositivoVerificate.IdDispositivo) throw new Exception($"{dispositivo.Imei} ya registrada");
+                Dispositivo? existingDispositivo = await _dispositivoRepository.GetById(dispositivo.IdDispositivo);
 
-                _dispositivoRepository.Update(dispositivo);
-                result = await _dispositivoRepository.SaveChangesAsync();
+                if (existingDispositivo is null)
+                {
+                    throw new Exception("Dispositivo no encontrado para actualizar.");
+                }
+
+                existingDispositivo.IdCliente = dispositivo.IdCliente;
+                existingDispositivo.Marca = dispositivo.Marca;
+                existingDispositivo.Modelo = dispositivo.Modelo;
+                existingDispositivo.Imei = dispositivo.Imei;
+                existingDispositivo.Color = dispositivo.Color;
+                existingDispositivo.AnioFabricacion = dispositivo.AnioFabricacion;
+                existingDispositivo.SistemaOperativo = dispositivo.SistemaOperativo;
+
+                _dispositivoRepository.Update(existingDispositivo);
+                result = 1;
             }
             catch (Exception)
             {
@@ -121,7 +152,7 @@ namespace TiendaReparacion.Services
                 if (dispositivo is null) throw new Exception("Dispositivo no registrado");
 
                 _dispositivoRepository.Delete(dispositivo);
-                result = await _dispositivoRepository.SaveChangesAsync();
+                result = 1;
             }
             catch (Exception)
             {

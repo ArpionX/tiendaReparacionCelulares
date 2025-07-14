@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,47 +14,71 @@ namespace TiendaReparacion.Repositories
     {
         Task<Diagnostico?> GetById(int id);
         Task<List<Diagnostico>> GetAll();
+        Task<List<Diagnostico>> GetByOrdenId(int idOrden);
         Task Insert(Diagnostico orden);
         void Update(Diagnostico orden);
         void Delete(Diagnostico orden);
-        Task<int> SaveChangesAsync();
     }
     public class DiagnosticoRepository: IDiagnosticoRepository
     {
-        private readonly TiendaDbContext _context;
+        private readonly IDbContextFactory<TiendaDbContext> _contextFactory;
 
-        public DiagnosticoRepository(TiendaDbContext context)
+        public DiagnosticoRepository(IDbContextFactory<TiendaDbContext> context)
         {
-            _context = context;
+            _contextFactory = context;
         }
 
         public async Task<List<Diagnostico>> GetAll()
         {
-            return await _context.Diagnosticos.ToListAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Diagnosticos.ToListAsync();
+            }
         }
 
         public async Task<Diagnostico?> GetById(int id)
         {
-            return await _context.Diagnosticos.FindAsync(id);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Diagnosticos.FindAsync(id);
+            }
         }
-    
-        public async Task Insert(Diagnostico cliente)
+        public async Task<List<Diagnostico>> GetByOrdenId(int idOrden)
         {
-            await _context.Diagnosticos.AddAsync(cliente);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Diagnosticos
+                                    .Where(d => d.IdOrden == idOrden)
+                                    .ToListAsync();
+            }
+        }
+        public async Task Insert(Diagnostico diagnostico)
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                await context.Diagnosticos.AddAsync(diagnostico);
+                await context.SaveChangesAsync();
+            }
         }
 
-        public void Update(Diagnostico cliente)
+        public void Update(Diagnostico diagnostico)
         {
-            _context.Diagnosticos.Update(cliente);
-        }
-        public void Delete(Diagnostico cliente)
-        {
-            _context.Diagnosticos.Remove(cliente);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.Diagnosticos.Update(diagnostico);
+                context.SaveChanges();
+            }
         }
 
-        public async Task<int> SaveChangesAsync()
+        public void Delete(Diagnostico diagnostico)
         {
-            return await _context.SaveChangesAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.Diagnosticos.Remove(diagnostico);
+                context.SaveChanges();
+            }
         }
+
+        
     }
 }

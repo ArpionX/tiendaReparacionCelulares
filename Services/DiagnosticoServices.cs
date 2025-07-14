@@ -12,6 +12,8 @@ namespace TiendaReparacion.Services
     {
         Task<Diagnostico?> GetById(int id);
         Task<List<Diagnostico>> GetAll();
+        Task<List<Diagnostico>> GetByOrdenId(int idOrden); // Nuevo método para buscar por ID de Orden
+
         Task<int> Insert(Diagnostico orden);
         Task<int> Update(Diagnostico orden);
         Task<int> Delete(int id);
@@ -54,14 +56,26 @@ namespace TiendaReparacion.Services
             }
             return diagnostico;
         }
-
+        public async Task<List<Diagnostico>> GetByOrdenId(int idOrden)
+        {
+            List<Diagnostico> diagnosticos = new List<Diagnostico>();
+            try
+            {
+                diagnosticos = await _diagnosticoRepository.GetByOrdenId(idOrden);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            return diagnosticos;
+        }
         public async Task<int> Insert(Diagnostico diagnostico)
         {
             int result = 0;
             try
             {
                 await _diagnosticoRepository.Insert(diagnostico);
-                result = await _diagnosticoRepository.SaveChangesAsync();
+                result = 1; // Indica que la inserción fue exitosa
             }
             catch (Exception)
             {
@@ -76,8 +90,23 @@ namespace TiendaReparacion.Services
             int result = 0;
             try
             {
-                _diagnosticoRepository.Update(diagnostico);
-                result = await _diagnosticoRepository.SaveChangesAsync();
+                Diagnostico? existingDiagnostico = await _diagnosticoRepository.GetById(diagnostico.IdDiagnostico);
+
+                if (existingDiagnostico is null)
+                {
+                    throw new Exception("Diagnóstico no encontrado para actualizar.");
+                }
+
+                existingDiagnostico.IdOrden = diagnostico.IdOrden;
+                existingDiagnostico.IdTecnico = diagnostico.IdTecnico;
+                existingDiagnostico.DescripcionProblema = diagnostico.DescripcionProblema;
+                existingDiagnostico.CausaRaiz = diagnostico.CausaRaiz;
+                existingDiagnostico.SolucionPropuesta = diagnostico.SolucionPropuesta;
+                existingDiagnostico.TiempoEstimadoHoras = diagnostico.TiempoEstimadoHoras;
+                existingDiagnostico.FechaDiagnostico = diagnostico.FechaDiagnostico;
+
+                _diagnosticoRepository.Update(existingDiagnostico);
+                result = 1;
             }
             catch (Exception)
             {
@@ -95,7 +124,7 @@ namespace TiendaReparacion.Services
                 if (diagnostico is null) throw new Exception("Diagnostico no registrado");
 
                 _diagnosticoRepository.Delete(diagnostico);
-                result = await _diagnosticoRepository.SaveChangesAsync();
+                result = 1; // Indica que la eliminación fue exitosa
             }
             catch (Exception)
             {

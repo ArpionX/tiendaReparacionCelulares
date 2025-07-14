@@ -3,90 +3,102 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TiendaReparacion.Data;
+using TiendaReparacion.Data.Entities;
 using TiendaReparacion.Repositories;
 using TiendaReparacion.Services;
+using TiendaReparacion.UI;
 
 namespace TiendaReparacion
 {
     internal static class Program
     {
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        static void Main()
-        {
-            // Configura el host de la aplicación. Esto es lo que permite la inyección de dependencias
-            // y la gestión de la configuración en aplicaciones .NET 8.0 WinForms.
-            var host = CreateHostBuilder().Build();
+        public static IHost? AppHost { get; private set; }
 
-            // Resuelve el servicio de DbContext y lo usa para asegurar que la base de datos se cree/migre.
-            // Esto es opcional, pero útil para el desarrollo inicial.
-            using (var scope = host.Services.CreateScope())
+        [STAThread]
+        static async Task Main()
+        {
+            AppHost = CreateHostBuilder().Build();
+
+            using (var scope = AppHost.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
                 try
                 {
                     var context = services.GetRequiredService<TiendaDbContext>();
-                    // Opcional: Aplica migraciones pendientes al iniciar la aplicación.
-                    // context.Database.Migrate(); // Descomentar si usas migraciones.
+                    // await context.Database.MigrateAsync();
+
+                    var authService = services.GetRequiredService<IAuthServices>();
+                    var testUser = await authService.GetById(1);
+                    if (testUser == null)
+                    {
+                        Usuario adminUser = new Usuario
+                        {
+                            NombreUsuario = "admin",
+                            ContrasenaHash = "password123",
+                            Rol = RolUsuario.administrador,
+                            FechaCreacion = DateTime.Now
+                        };
+                        await authService.Insert(adminUser);
+                        MessageBox.Show("Usuario 'admin' creado con contraseña 'password123'. ¡Cámbiala en producción!", "Usuario de Prueba Creado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    // Manejo de errores si la conexión a la BD falla al inicio.
-                    MessageBox.Show($"Error al conectar o migrar la base de datos: {ex.Message}", "Error de Base de Datos", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return; // Termina la aplicación si hay un error crítico al inicio de la BD.
+                    MessageBox.Show($"Error al conectar o migrar la base de datos: {ex.Message}\nDetalles: {ex.InnerException?.Message}", "Error de Base de Datos", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
                 }
             }
 
-            // Para configurar la alta DPI (píxeles por pulgada) para la aplicación.
             ApplicationConfiguration.Initialize();
 
-            // Ejecuta la aplicación WinForms.
-            Application.Run(host.Services.GetRequiredService<Form1>()); // Asume que tienes un Form1
+            // Ejecuta el formulario de Login al inicio.
+            Application.Run(AppHost.Services.GetRequiredService<Login>());
         }
 
-        // Crea y configura el IHostBuilder para la aplicación.
         static IHostBuilder CreateHostBuilder() =>
             Host.CreateDefaultBuilder()
                 .ConfigureAppConfiguration((context, builder) =>
                 {
-                    // En este enfoque "más sencillo", no necesitamos cargar appsettings.json.
-                    // Puedes dejar esta sección vacía o eliminarla si no planeas usar ninguna otra configuración.
-                    // La dejaremos con el SetBasePath por si en el futuro se quiere añadir algo.
                     builder.SetBasePath(Directory.GetCurrentDirectory());
                 })
                 .ConfigureServices((context, services) =>
                 {
-                    // Obtiene la cadena de conexión de la clase estática AppConstants.
                     var connectionString = AppConstants.DefaultConnectionString;
 
-                    // Registra el TiendaDbContext con la inyección de dependencias.
-                    services.AddDbContext<TiendaDbContext>(options =>
+                    services.AddDbContextFactory<TiendaDbContext>(options =>
                         options.UseMySql(connectionString,
-                            ServerVersion.AutoDetect(connectionString), // Auto-detecta la versión de tu servidor MySQL.
+                            ServerVersion.AutoDetect(connectionString),
                             mySqlOptions => mySqlOptions.EnableRetryOnFailure(
                                 maxRetryCount: 10,
                                 maxRetryDelay: TimeSpan.FromSeconds(30),
                                 errorNumbersToAdd: null)
                         )
                     );
-                    // ¡NUEVO! Registra el repositorio de técnicos para la inyección de dependencias.
-                    // Usamos AddTransient porque los repositorios a menudo tienen un ciclo de vida corto.
-                    services.AddTransient<ITecnicoRepository, TecnicoRepository>();
-                    services.AddTransient<IDispositivoRepository, DispositivoRepository>();
-                    services.AddTransient<IUsuarioRepository, UsuarioRepository>();
-                    services.AddTransient<IOrdenServicioRepository, OrdenServicioRepository>();
-                    services.AddTransient<IDiagnosticoRepository, DiagnosticoRepository>();
-                    services.AddTransient<IClienteRepository, ClienteRepository>();
 
-                    services.AddScoped<IDispositivoServices, DispositivoServices>();
-                    services.AddScoped<IAuthServices, AuthServices>();
-                    services.AddScoped<IOrdenServicioServices, OrdenServicioServices>();
-                    services.AddScoped<IDiagnosticoServices, DiagnosticoServices>();
-                    services.AddScoped<IClienteServices, ClienteServices>();
-                    // Registra tus formularios principales o servicios de UI que necesiten inyección.
-                    services.AddTransient<Form1>(); // Asegúrate de que Form1 pueda recibir TiendaDbContext en su constructor
+
+                    // Registro de Repositorios
+                    services.AddTransient<IUsuarioRepository, UsuarioRepository>();
+                    services.AddTransient<ITecnicoRepository, TecnicoRepository>();
+                    services.AddTransient<IClienteRepository, ClienteRepository>(); // ¡NUEVO!
+                    services.AddTransient<IDispositivoRepository, DispositivoRepository>(); // ¡NUEVO!
+                    services.AddTransient<IOrdenServicioRepository, OrdenServicioRepository>(); // ¡NUEVO!
+
+
+                    // Registro de Servicios
+                    services.AddTransient<IAuthServices, AuthServices>();
+                    services.AddTransient<IClienteServices, ClienteServices>(); // ¡NUEVO!
+                    services.AddTransient<IDispositivoServices, DispositivoServices>(); // ¡NUEVO!
+                    services.AddTransient<IOrdenServicioServices, OrdenServicioServices>(); // ¡NUEVO!
+                    services.AddTransient<ITecnicoServices, TecnicoServices>(); // ¡NUEVO! Para buscar técnicos
+
+
+                    // Registro de Formularios de UI para que puedan ser inyectados.
+                    services.AddTransient<Login>();
+                    // El Dashboard ahora recibe el Usuario y el IServiceProvider
+                    services.AddTransient<Dashboard>(); // Registra el Dashboard
+                    services.AddTransient<GestionClientes>(); // ¡NUEVO!
+                    services.AddTransient<GestionDispositivos>(); // ¡NUEVO!
+                    services.AddTransient<OrdenesServicio>(); // ¡NUEVO!
                 });
     }
 }

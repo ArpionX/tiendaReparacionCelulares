@@ -20,7 +20,7 @@ namespace TiendaReparacion.Data.Entities
         public int IdOrden { get; set; } // Foreign Key
 
         [Column("id_tecnico")]
-        public int IdTecnico { get; set; } // Foreign Key
+        public int? IdTecnico { get; set; } // Foreign Key
 
         [Required]
         [Column("descripcion_problema", TypeName = "TEXT")]

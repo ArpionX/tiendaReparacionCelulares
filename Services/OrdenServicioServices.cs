@@ -82,7 +82,7 @@ namespace TiendaReparacion.Services
                 if (ordenVerificate is not null) throw new Exception($"{orden.NumeroOrden} ya registrada");
 
                 await _ordenRepository.Insert(orden);
-                result = await _ordenRepository.SaveChangesAsync();
+                result = 1;
             }
             catch (Exception)
             {
@@ -92,17 +92,31 @@ namespace TiendaReparacion.Services
             return result;
         }
 
-        public async Task<int> Update(OrdenServicio orden)
+        public async Task<int> Update(OrdenServicio ordenServicio)
         {
             int result = 0;
             try
             {
-                OrdenServicio? ordenVerificate = await _ordenRepository.GetByNumberOrden(orden.NumeroOrden);
-                
-                if (ordenVerificate is not null && orden.IdOrden != ordenVerificate.IdOrden) throw new Exception($"{orden.NumeroOrden} ya registrada");
+                OrdenServicio? existingOrden = await _ordenRepository.GetById(ordenServicio.IdOrden);
 
-                _ordenRepository.Update(orden);
-                result = await _ordenRepository.SaveChangesAsync();
+                if (existingOrden is null)
+                {
+                    throw new Exception("Orden de servicio no encontrada para actualizar.");
+                }
+
+                existingOrden.NumeroOrden = ordenServicio.NumeroOrden;
+                existingOrden.IdCliente = ordenServicio.IdCliente;
+                existingOrden.IdDispositivo = ordenServicio.IdDispositivo;
+                existingOrden.IdTecnico = ordenServicio.IdTecnico;
+                existingOrden.DescripcionProblema = ordenServicio.DescripcionProblema;
+                existingOrden.FechaIngreso = ordenServicio.FechaIngreso;
+                existingOrden.FechaEntregaEstimada = ordenServicio.FechaEntregaEstimada;
+                existingOrden.FechaEntregaReal = ordenServicio.FechaEntregaReal;
+                existingOrden.EstadoOrden = ordenServicio.EstadoOrden;
+                existingOrden.Observaciones = ordenServicio.Observaciones;
+
+                _ordenRepository.Update(existingOrden);
+                result = 1;
             }
             catch (Exception)
             {
@@ -120,7 +134,7 @@ namespace TiendaReparacion.Services
                 if (orden is null) throw new Exception("OrdenServicio no registrado");
 
                 _ordenRepository.Delete(orden);
-                result = await _ordenRepository.SaveChangesAsync();
+                result = 1;
             }
             catch (Exception)
             {

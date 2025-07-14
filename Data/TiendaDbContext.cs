@@ -129,6 +129,34 @@ namespace TiendaReparacion.Data
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.NombreUsuario)
                 .IsUnique();
+
+            // ¡NUEVA CONFIGURACIÓN PARA RESOLVER EL ERROR 'TecnicoIdTecnico'!
+            // Define explícitamente la relación entre Usuario y Tecnico.
+            modelBuilder.Entity<Usuario>()
+                .HasOne(u => u.Tecnico) // Un Usuario tiene un Tecnico (opcional)
+                .WithMany() // Un Tecnico puede estar asociado con muchos Usuarios (no hay propiedad de navegación inversa en Tecnico)
+                .HasForeignKey(u => u.IdTecnico) // La clave foránea en Usuario es 'IdTecnico'
+                .IsRequired(false); // La relación es opcional porque 'IdTecnico' es nullable.
+            modelBuilder.Entity<Dispositivo>()
+                .HasOne(d => d.Cliente) // Un Dispositivo pertenece a un Cliente
+                .WithMany(c => c.Dispositivos) // Un Cliente puede tener muchos Dispositivos
+                .HasForeignKey(d => d.IdCliente) // La clave foránea en Dispositivo es 'IdCliente'
+                .OnDelete(DeleteBehavior.Cascade); // Elimina los Dispositivos si se elimina el Cliente
+            modelBuilder.Entity<OrdenServicio>()
+                .HasOne(o => o.Cliente) // Una Orden de Servicio pertenece a un Cliente
+                .WithMany(c => c.OrdenesServicio) // Un Cliente puede tener muchas Órdenes de Servicio
+                .HasForeignKey(o => o.IdCliente) // La clave foránea en OrdenServicio es 'IdCliente'
+                .OnDelete(DeleteBehavior.Cascade); // Elimina las Órdenes de Servicio si se elimina el Cliente
+            modelBuilder.Entity<OrdenServicio>()
+                .HasOne(o => o.Dispositivo) // Una Orden de Servicio pertenece a un Dispositivo
+                .WithMany(d => d.OrdenesServicio) // Un Dispositivo puede tener muchas Órdenes de Servicio
+                .HasForeignKey(o => o.IdDispositivo) // La clave foránea en OrdenServicio es 'IdDispositivo'
+                .OnDelete(DeleteBehavior.Cascade); // Elimina las Órdenes de Servicio si se elimina el Dispositivo
+            modelBuilder.Entity<OrdenServicio>()
+                .HasOne(o => o.Tecnico) // Una Orden de Servicio puede tener un Técnico asignado
+                .WithMany(t => t.OrdenesServicio) // Un Técnico puede estar asociado con muchas Órdenes de Servicio
+                .HasForeignKey(o => o.IdTecnico) // La clave foránea en OrdenServicio es 'IdTecnico'
+                .IsRequired(false); // La relación es opcional porque 'IdTecnico' es nullable.
         }
     }
 }

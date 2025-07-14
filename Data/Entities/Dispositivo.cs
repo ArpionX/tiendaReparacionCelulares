@@ -37,7 +37,7 @@ namespace TiendaReparacion.Data.Entities
         [Column("color")]
         public string Color { get; set; }
 
-        [Column("año_fabricacion", TypeName = "YEAR")]
+        [Column("a?o_fabricacion", TypeName = "YEAR")]
         public short? AnioFabricacion { get; set; } // Usar short para YEAR
 
         [StringLength(50)]

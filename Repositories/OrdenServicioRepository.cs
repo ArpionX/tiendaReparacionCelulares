@@ -17,50 +17,69 @@ namespace TiendaReparacion.Repositories
         Task Insert(OrdenServicio orden);
         void Update(OrdenServicio orden);
         void Delete(OrdenServicio orden);
-        Task<int> SaveChangesAsync();
     }
     public class OrdenServicioRepository : IOrdenServicioRepository
     {
-        private readonly TiendaDbContext _context;
+        private readonly IDbContextFactory<TiendaDbContext> _contextFactory;
 
-        public OrdenServicioRepository(TiendaDbContext context)
+        public OrdenServicioRepository(IDbContextFactory<TiendaDbContext> context)
         {
-            _context = context;
+            _contextFactory = context;
         }
 
         public async Task<List<OrdenServicio>> GetAll()
         {
-            return await _context.OrdenesServicio.ToListAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.OrdenesServicio.ToListAsync();
+            }
+
         }
 
         public async Task<OrdenServicio?> GetById(int id)
         {
-            return await _context.OrdenesServicio.FindAsync(id);
+
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.OrdenesServicio.FindAsync(id);
+            }
         }
 
         public async Task<OrdenServicio?> GetByNumberOrden(string numberOrden)
         {
-            return await _context.OrdenesServicio.FirstOrDefaultAsync(orden => orden.NumeroOrden.ToUpper().Equals(numberOrden.ToUpper()));
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.OrdenesServicio.FirstOrDefaultAsync(orden => orden.NumeroOrden.ToUpper().Equals(numberOrden.ToUpper()));
+            }
         }
 
         public async Task Insert(OrdenServicio orden)
         {
-            await _context.OrdenesServicio.AddAsync(orden);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                await context.OrdenesServicio.AddAsync(orden);
+                await context.SaveChangesAsync();
+            }
         }
 
         public void Update(OrdenServicio orden)
         {
-            _context.OrdenesServicio.Update(orden);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.OrdenesServicio.Update(orden);
+                context.SaveChanges();
+            }
         }
         public void Delete(OrdenServicio orden)
         {
-            _context.OrdenesServicio.Remove(orden);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.OrdenesServicio.Remove(orden);
+                context.SaveChanges();
+            }
         }
 
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
+        
 
     }
 }

@@ -36,9 +36,14 @@ namespace TiendaReparacion.Data.Entities
 
         [Column("direccion", TypeName = "TEXT")]
         public string Direccion { get; set; }
+        
 
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; }
+        [Required]
+        [Column("cedula")]
+        [StringLength(20)]
+        public string? Cedula { get; set; }
 
         // Propiedad de navegación para las órdenes de servicio asociadas a este cliente.
         public ICollection<OrdenServicio> OrdenesServicio { get; set; }

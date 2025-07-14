@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace TiendaReparacion.Repositories
 {
     public interface IClienteRepository
     {
+        Task<Cliente?> GetByCedula(string cedula); // ¡NUEVO!
         Task<List<Cliente>> GetByName(string name);
         Task<Cliente?> GetByEmail(string email);
         Task<Cliente?> GetById(int id);
@@ -18,54 +20,80 @@ namespace TiendaReparacion.Repositories
         Task Insert(Cliente cliente);
         void Update(Cliente cliente);
         void Delete(Cliente cliente);
-        Task<int> SaveChangesAsync();
     }
     public class ClienteRepository : IClienteRepository
     {
-        private readonly TiendaDbContext _context;
+        private readonly IDbContextFactory<TiendaDbContext> _contextFactory;
 
-        public ClienteRepository(TiendaDbContext context)
+        public ClienteRepository(IDbContextFactory<TiendaDbContext> context)
         {
-            _context = context;
+            _contextFactory = context;
         }
        
         public async Task<List<Cliente>> GetAll()
         {
-            return await _context.Clientes.ToListAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Clientes.ToListAsync();
+            }
         }
-
+        public async Task<Cliente?> GetByCedula(string cedula) // ¡NUEVO!
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Clientes.FirstOrDefaultAsync(client => client.Cedula != null && client.Cedula.ToUpper().Equals(cedula.ToUpper()));
+            }
+        }
         public async Task<Cliente?> GetById(int id)
         {
-            return await _context.Clientes.FindAsync(id);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Clientes.FindAsync(id);
+            }
         }
 
         public async Task<List<Cliente>> GetByName(string name)
         {
-            return await _context.Clientes.Where(client => client.Nombre.ToUpper().Contains(name.ToUpper())).ToListAsync(); 
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Clientes.Where(client => client.Nombre.ToUpper().Contains(name.ToUpper())).ToListAsync();
+            }
         }
 
         public async Task Insert(Cliente cliente)
         {
-            await _context.Clientes.AddAsync(cliente);
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                await context.Clientes.AddAsync(cliente);
+                await context.SaveChangesAsync();
+            }
         }
 
         public void Update(Cliente cliente)
         {
-             _context.Clientes.Update(cliente);
-        }
-        public void  Delete(Cliente cliente)
-        {
-            _context.Clientes.Remove(cliente);
-        }
-
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                // Adjuntar la entidad si no está siendo rastreada
+                context.Clientes.Update(cliente); // Update ya maneja el estado
+                context.SaveChanges();
+            }
         }
 
+        public void Delete(Cliente cliente)
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                // Adjuntar la entidad si no está siendo rastreada
+                context.Clientes.Remove(cliente);
+                context.SaveChanges();
+            }
+        }
         public async Task<Cliente?> GetByEmail(string email)
         {
-            return await _context.Clientes.FirstOrDefaultAsync(client => client.Email.ToUpper().Equals(email.ToUpper()));
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Clientes.FirstOrDefaultAsync(client => client.Email.ToUpper().Equals(email.ToUpper()));
+            }
         }
     }
 }

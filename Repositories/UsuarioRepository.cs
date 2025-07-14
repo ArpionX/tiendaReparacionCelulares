@@ -14,43 +14,66 @@ namespace TiendaReparacion.Repositories
         Task<Usuario?> Login(string nameUser);
         Task<Usuario?> GetById(int id); 
         Task Insert(Usuario user);
-        void Update(Usuario user);
-        void Delete(Usuario user);
-        Task<int> SaveChangesAsync();
+        Task Update(Usuario user);
+        Task Delete(Usuario user);
     }
     public class UsuarioRepository : IUsuarioRepository
     {
-        private readonly TiendaDbContext _context;
+        private readonly IDbContextFactory<TiendaDbContext> _contextFactory;
 
-        public UsuarioRepository(TiendaDbContext context)
+        public UsuarioRepository(IDbContextFactory<TiendaDbContext> context)
         {
-            _context = context;
+            _contextFactory = context;
         }
-       
+
         public async Task<Usuario?> GetById(int id)
         {
-            return await _context.Usuarios.FindAsync(id);
+            using (var context = _contextFactory.CreateDbContext()) // <-- ¡Se crea una nueva instancia aquí!
+            {
+                return await context.Usuarios.FindAsync(id);
+            } // <-- La instancia se desecha automáticamente aquí        
         }
         public async Task<Usuario?> Login(string nameUser)
         {
-           return await _context.Usuarios.FirstOrDefaultAsync(user => user.NombreUsuario.ToUpper().Equals(nameUser.ToUpper()));
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Usuarios.FirstOrDefaultAsync(user => user.NombreUsuario.ToUpper().Equals(nameUser.ToUpper()));
+            }
         }
-        public Task Insert(Usuario user)
+        public async Task Insert(Usuario user)
         {
-            throw new NotImplementedException();
+            using (var context = _contextFactory.CreateDbContext()) // <-- Otra nueva instancia
+            {
+                await context.Usuarios.AddAsync(user);
+                await context.SaveChangesAsync(); // Guarda los cambios de esta operación
+            } // <-- La instancia se desecha
         }
-       
-        public void Update(Usuario user)
+
+        public async Task Update(Usuario user)
         {
-            _context.Usuarios.Update(user);
+            using(var context = _contextFactory.CreateDbContext())
+            {
+                await context.Usuarios
+                    .Where(u => u.IdUsuario == user.IdUsuario)
+                    .ExecuteUpdateAsync(u => u.SetProperty(p => p.NombreUsuario, user.NombreUsuario)
+                                               .SetProperty(p => p.ContrasenaHash, user.ContrasenaHash)
+                                               .SetProperty(p => p.Rol, user.Rol)
+                                               .SetProperty(p => p.IdTecnico, user.IdTecnico));
+                await context.SaveChangesAsync();
+            }
+
         }
-        public void Delete(Usuario user)
+        public async Task Delete(Usuario user)
         {
-            _context.Usuarios.Remove(user);
+
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                await context.Usuarios
+                    .Where(u => u.IdUsuario == user.IdUsuario)
+                    .ExecuteDeleteAsync();
+                await context.SaveChangesAsync(); // Guarda los cambios de esta operación
+            }
         }
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
+        
     }
 }

@@ -35,8 +35,10 @@ namespace TiendaReparacion.Services
 
                 bool verificatePassword = VerificatePassword(password, user?.ContrasenaHash ?? string.Empty);
                 if (user is  null || !verificatePassword) throw new Exception(errorCredentials);
-                
-                
+
+                user.UltimoLogin = DateTime.Now;
+                await _usuarioRepository.Update(user); // El método Update del repositorio ahora guarda directamente.
+
             }
             catch (Exception)
             {
@@ -47,7 +49,7 @@ namespace TiendaReparacion.Services
         }
         public async Task<Usuario?> GetById(int id)
         {
-            Usuario? usuario = new Usuario();
+            Usuario? usuario = null;
             try
             {
                 usuario = await _usuarioRepository.GetById(id);
@@ -72,7 +74,6 @@ namespace TiendaReparacion.Services
                 usuario.ContrasenaHash = EncryptedPassword(usuario.ContrasenaHash);
 
                 await _usuarioRepository.Insert(usuario);
-                result = await _usuarioRepository.SaveChangesAsync();
             }
             catch (Exception)
             {
@@ -87,12 +88,23 @@ namespace TiendaReparacion.Services
             int result = 0;
             try
             {
-                Usuario? user = await _usuarioRepository.Login(usuario.NombreUsuario);
-
-                if (user is not null && user.IdUsuario != usuario.IdUsuario) throw new Exception($"{usuario.NombreUsuario} ya se encuentra registrado");
-
-                _usuarioRepository.Update(usuario);
-                result = await _usuarioRepository.SaveChangesAsync();
+                Usuario? existingUser = await _usuarioRepository.Login(usuario.NombreUsuario);
+                if (existingUser is not null && existingUser.IdUsuario != usuario.IdUsuario)
+                {
+                    throw new Exception($"El usuario '{usuario.NombreUsuario}' ya se encuentra registrado por otro ID.");
+                }
+                Usuario? originalUser = await _usuarioRepository.GetById(usuario.IdUsuario);
+                if (originalUser != null && !string.IsNullOrEmpty(usuario.ContrasenaHash) &&
+                    !BCrypt.Net.BCrypt.Verify(usuario.ContrasenaHash, originalUser.ContrasenaHash)) // Si la nueva contraseña no es el hash actual
+                {
+                    usuario.ContrasenaHash = EncryptedPassword(usuario.ContrasenaHash);
+                }
+                else if (originalUser != null)
+                {
+                    // Si la contraseña no se cambió, mantenemos el hash existente.
+                    usuario.ContrasenaHash = originalUser.ContrasenaHash;
+                }
+                await _usuarioRepository.Update(usuario);
             }
             catch (Exception)
             {
@@ -109,8 +121,7 @@ namespace TiendaReparacion.Services
 
                 if (usuario is null) throw new Exception("Usuario no registrado");
 
-                _usuarioRepository.Delete(usuario);
-                result = await _usuarioRepository.SaveChangesAsync();
+                await _usuarioRepository.Delete(usuario);
             }
             catch (Exception)
             {

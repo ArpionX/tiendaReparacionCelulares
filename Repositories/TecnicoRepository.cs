@@ -9,53 +9,80 @@ using TiendaReparacion.Data.Entities;
 
 namespace TiendaReparacion.Repositories
 {
-    // Interfaz para el repositorio de Técnicos.
-    // Define las operaciones CRUD (Crear, Leer, Actualizar, Borrar) básicas para la entidad Tecnico.
     public interface ITecnicoRepository
     {
-        // Inserta un nuevo técnico en la base de datos.
-        Task AddTecnicoAsync(Tecnico tecnico);
-
-        // Obtiene una lista de todos los técnicos de la base de datos.
-        Task<IEnumerable<Tecnico>> GetAllTecnicosAsync();
-
-        // Puedes añadir más métodos aquí según las necesidades de tu aplicación, por ejemplo:
-        // Task<Tecnico> GetTecnicoByIdAsync(int id);
-        // Task UpdateTecnicoAsync(Tecnico tecnico);
-        // Task DeleteTecnicoAsync(int id);
+        Task<List<Tecnico>> GetAll();
+        Task<Tecnico?> GetById(int id);
+        Task<Tecnico?> GetByName(string nombre); // ¡NUEVO!
+        Task Insert(Tecnico tecnico);
+        void Update(Tecnico tecnico);
+        void Delete(Tecnico tecnico);
     }
     // Implementación del repositorio de Técnicos.
     public class TecnicoRepository : ITecnicoRepository
     {
-        // Campo privado para la instancia del DbContext.
-        private readonly TiendaDbContext _context;
+        private readonly IDbContextFactory<TiendaDbContext> _contextFactory;
 
-        // Constructor que recibe una instancia de TiendaDbContext a través de la inyección de dependencias.
-        public TecnicoRepository(TiendaDbContext context)
+        public TecnicoRepository(IDbContextFactory<TiendaDbContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
+        }
+
+        public async Task<List<Tecnico>> GetAll()
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Tecnicos.ToListAsync();
+            }
+        }
+
+        public async Task<Tecnico?> GetById(int id)
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Tecnicos.FindAsync(id);
+            }
         }
 
         /// <summary>
-        /// Añade un nuevo técnico a la base de datos de forma asíncrona.
+        /// Obtiene un técnico por su nombre.
         /// </summary>
-        /// <param name="tecnico">Objeto Tecnico a añadir.</param>
-        public async Task AddTecnicoAsync(Tecnico tecnico)
+        /// <param name="nombre">El nombre del técnico.</param>
+        /// <returns>La instancia del técnico si se encuentra, de lo contrario null.</returns>
+        public async Task<Tecnico?> GetByName(string nombre) // ¡NUEVO!
         {
-            // Añade el técnico al DbSet.
-            _context.Tecnicos.Add(tecnico);
-            // Guarda los cambios en la base de datos.
-            await _context.SaveChangesAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                return await context.Tecnicos
+                                    .FirstOrDefaultAsync(t => t.Nombre != null && t.Nombre.ToUpper().Equals(nombre.ToUpper()));
+            }
         }
 
-        /// <summary>
-        /// Obtiene todos los técnicos de la base de datos de forma asíncrona.
-        /// </summary>
-        /// <returns>Una colección de objetos Tecnico.</returns>
-        public async Task<IEnumerable<Tecnico>> GetAllTecnicosAsync()
+        public async Task Insert(Tecnico tecnico)
         {
-            // Retorna todos los técnicos desde el DbSet.
-            return await _context.Tecnicos.ToListAsync();
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                await context.Tecnicos.AddAsync(tecnico);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public void Update(Tecnico tecnico)
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.Tecnicos.Update(tecnico);
+                context.SaveChanges();
+            }
+        }
+
+        public void Delete(Tecnico tecnico)
+        {
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                context.Tecnicos.Remove(tecnico);
+                context.SaveChanges();
+            }
         }
     }
 }
